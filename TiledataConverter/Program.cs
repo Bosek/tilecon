@@ -1,12 +1,14 @@
 ﻿using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using TiledataConverter.Tiledata;
 
 namespace TiledataConverter
 {
     class Program
     {
-
         static void PrintHelp()
         {
             Console.WriteLine("https://github.com/Bosek/tilecon");
@@ -21,70 +23,64 @@ namespace TiledataConverter
             if (args.Length == 0)
             {
                 PrintHelp();
+                return;
             }
-            else
+
+            args = args.Select(arg => arg.ToLower()).ToArray();
+            switch (args[0])
             {
-                switch (args[0])
-                {
-                    case "json":
-                    case "tojson":
+                case "json":
+                case "tojson":
+                    {
                         if (!File.Exists("tiledata.mul"))
                         {
                             Console.WriteLine("tiledata.mul not found");
+                            break;
                         }
-                        else
-                        {
-                            var tiledataManager = new TiledataManager("tiledata.mul");
-                            Console.WriteLine("Loading land data");
-                            var landTiledata = tiledataManager.LoadLandTiledata();
-                            Console.WriteLine("Land data loaded");
 
-                            Console.WriteLine("Loading static data");
-                            var staticTiledata = tiledataManager.LoadStaticTiledata();
-                            Console.WriteLine("Static data loaded");
+                        var tiledataManager = new TiledataManager("tiledata.mul");
+                        Console.WriteLine("Loading tiledata.mul");
+                        var landTiledata = tiledataManager.LoadLandTiledata();
+                        var staticTiledata = tiledataManager.LoadStaticTiledata();
 
-                            Console.WriteLine("Creating landTiledata.json");
-                            File.WriteAllText("landTiledata.json", JsonConvert.SerializeObject(landTiledata, Formatting.Indented));
+                        Console.WriteLine("Creating landTiledata.json");
+                        Json.SerializeToFile("landTiledata.json", TiledataManager.GetDict(landTiledata));
 
-                            Console.WriteLine("Creating staticTiledata.json");
-                            File.WriteAllText("staticTiledata.json", JsonConvert.SerializeObject(staticTiledata, Formatting.Indented));
-                        }
+                        Console.WriteLine("Creating staticTiledata.json");
+                        Json.SerializeToFile("staticTileData.json", TiledataManager.GetDict(staticTiledata));
                         break;
-                    case "mul":
-                    case "tomul":
-                        var landTiledataExists = File.Exists("landTiledata.json");
-                        var staticTiledataExists = File.Exists("staticTiledata.json");
-                        if (!landTiledataExists || !staticTiledataExists)
+                    }
+                case "mul":
+                case "tomul":
+                    {
+                        if (!File.Exists("landTiledata.json"))
                         {
-                            if (!landTiledataExists)
-                            {
-                                Console.WriteLine("landTiledata.json not found");
-                            }
-                            if (!staticTiledataExists)
-                            {
-                                Console.WriteLine("staticTiledata.json not found");
-                            }
+                            Console.WriteLine("landTiledata.json not found");
+                            break;
                         }
-                        else
+                        if (!File.Exists("staticTiledata.json"))
                         {
-                            Console.WriteLine("Loading land data");
-                            var landTiledata = (LandTiledata[])JsonConvert.DeserializeObject(
-                                File.ReadAllText("landTiledata.json"), typeof(LandTiledata[]));
-                            Console.WriteLine("Land data loaded");
-
-                            Console.WriteLine("Loading static data");
-                            var staticTiledata = (StaticTiledata[])JsonConvert.DeserializeObject(
-                                File.ReadAllText("staticTiledata.json"), typeof(StaticTiledata[]));
-                            Console.WriteLine("Static data loaded");
-
-                            Console.WriteLine("Creating tiledata.mul");
-                            TiledataManager.SaveTileData("tiledata.mul", landTiledata, staticTiledata);
+                            Console.WriteLine("staticTiledata.json not found");
+                            break;
                         }
+
+                        Console.WriteLine("Loading landTiledata.json");
+                        var landTiledataDict = (Dictionary<string, LandTiledata>)JsonConvert.DeserializeObject(
+                            File.ReadAllText("landTiledata.json"), typeof(Dictionary<string, LandTiledata>));
+                        var landTiledata = TiledataManager.GetList(landTiledataDict).ToArray();
+
+                        Console.WriteLine("Loading staticTiledata.json");
+                        var staticTiledataDict = (Dictionary<string, StaticTiledata>)JsonConvert.DeserializeObject(
+                            File.ReadAllText("staticTiledata.json"), typeof(Dictionary<string, StaticTiledata>));
+                        var staticTiledata = TiledataManager.GetList(staticTiledataDict).ToArray();
+
+                        Console.WriteLine("Creating tiledata.mul");
+                        TiledataManager.SaveTileData("tiledata.mul", landTiledata, staticTiledata);
                         break;
-                    default:
-                        PrintHelp();
-                        break;
-                }
+                    }
+                default:
+                    PrintHelp();
+                    break;
             }
         }
 
