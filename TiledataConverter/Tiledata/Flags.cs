@@ -3,7 +3,7 @@
 namespace TiledataConverter.Tiledata
 {
     [Flags]
-    public enum Flags : uint
+    public enum Flags : int
     {
         Background = 0x00000001,
         Weapon = 0x00000002,

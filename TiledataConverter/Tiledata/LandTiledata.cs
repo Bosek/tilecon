@@ -5,7 +5,7 @@ using System.Text;
 
 namespace TiledataConverter.Tiledata
 {
-    class LandTiledata
+    struct LandTiledata
     {
         [Newtonsoft.Json.JsonIgnore]
         public int ID { get; set; }
@@ -28,14 +28,16 @@ namespace TiledataConverter.Tiledata
         {
             get
             {
+                var flags = Flags;
                 return Enum.GetValues(typeof(Flags)).Cast<Flags>()
-                    .Where(flag => Flags.HasFlag(flag))
+                    .Where(flag => flags.HasFlag(flag))
                     .Select(flag => flag.ToString())
                     .ToArray();
             }
             set
             {
-                value.ToList().ForEach(flag => Flags |= (Flags)Enum.Parse(typeof(Flags), flag, true));
+                var flags = Flags;
+                value.ToList().ForEach(flag => flags |= (Flags)Enum.Parse(typeof(Flags), flag, true));
             }
         }
 

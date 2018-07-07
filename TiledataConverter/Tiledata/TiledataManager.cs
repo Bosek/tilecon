@@ -107,8 +107,9 @@ namespace TiledataConverter.Tiledata
             var list = new List<LandTiledata>();
             dict.ToList().ForEach(kvPair =>
             {
-                kvPair.Value.HexID = kvPair.Key;
-                list.Add(kvPair.Value);
+                var landTile = kvPair.Value;
+                landTile.HexID = kvPair.Key;
+                list.Add(landTile);
             });
             return list;
         }
@@ -125,8 +126,9 @@ namespace TiledataConverter.Tiledata
             var list = new List<StaticTiledata>();
             dict.ToList().ForEach(kvPair =>
             {
-                kvPair.Value.HexID = kvPair.Key;
-                list.Add(kvPair.Value);
+                var staticTile = kvPair.Value;
+                staticTile.HexID = kvPair.Key;
+                list.Add(staticTile);
             });
             return list;
         }

@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace TiledataConverter.AnimData
 {
-    class AnimData
+    struct AnimData
     {
         [Newtonsoft.Json.JsonIgnore]
         public int ID { get; set; }
