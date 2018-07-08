@@ -7,6 +7,7 @@ namespace TiledataConverter.Tiledata
 {
     class TiledataManager
     {
+        int landBlockCount = 512;
         int landBlockSize = 836;
         int landTileSize = 26;
 
@@ -15,13 +16,10 @@ namespace TiledataConverter.Tiledata
 
         byte[] data;
 
-        public TiledataManager(string filename = null, int landBlockSize = 836, int staticBlockSize = 1188)
+        public TiledataManager(string filename = null)
         {
             if (filename != null)
                 LoadMul(filename);
-
-            this.landBlockSize = landBlockSize;
-            this.staticBlockSize = staticBlockSize;
         }
 
         public void LoadMul(string filename)
@@ -33,25 +31,26 @@ namespace TiledataConverter.Tiledata
         {
             if (data == null)
                 throw new NullReferenceException("Data buffer is empty.");
-
-            var blockSize = landBlockSize;
-            var tileSize = landTileSize;
+            
             var landTileList = new List<LandTiledata>();
 
             try
             {
-                var landTiledata = data.Take(512 * landBlockSize).ToArray();
+                var landTiledata = data.Take(landBlockCount * landBlockSize).ToArray();
 
                 var progressTracking = 0;
-                for (int block = 0; block < landTiledata.Length / blockSize; block++)
+                for (int block = 0; block < landBlockCount; block++)
                 {
-                    var landTileBlock = landTiledata.Skip(block * blockSize + 4).ToArray();
-                    for (int tile = 0; tile < 32; tile++)
+                    var landTileBlock = landTiledata.Skip(block * landBlockSize + 4).ToArray();
+
+                    var tilesInBlock = landBlockSize / landTileSize;
+                    for (int tile = 0; tile < tilesInBlock; tile++)
                     {
-                        landTileList.Add(LandTiledata.Load(block * 32 + tile, landTileBlock.Skip(tile * tileSize).Take(tileSize).ToArray()));
+                        var landTile = landTileBlock.Skip(tile * landTileSize).Take(landTileSize).ToArray();
+                        landTileList.Add(LandTiledata.Load(block * tilesInBlock + tile, landTile));
                     }
                     progressTracking++;
-                    progressCallback?.DynamicInvoke(progressTracking, landTiledata.Length / blockSize);
+                    progressCallback?.DynamicInvoke(progressTracking, landTiledata.Length / landBlockSize);
                 }
             }
             catch (Exception exception)
@@ -67,24 +66,24 @@ namespace TiledataConverter.Tiledata
             if (data == null)
                 throw new NullReferenceException("Data buffer is empty.");
 
-            var blockSize = staticBlockSize;
-            var tileSize = staticTileSize;
             var staticTileList = new List<StaticTiledata>();
 
             try
             {
-                var staticTiledata = data.Skip(512 * landBlockSize).ToArray();
+                var staticTiledata = data.Skip(landBlockCount * landBlockSize).ToArray();
 
                 var progressTracking = 0;
-                for (int block = 0; block < staticTiledata.Length / blockSize; block++)
+                for (int block = 0; block < staticTiledata.Length / staticBlockSize; block++)
                 {
-                    var staticTileBlock = staticTiledata.Skip(block * blockSize + 4).ToArray();
-                    for (int tile = 0; tile < 32; tile++)
+                    var staticTileBlock = staticTiledata.Skip(block * staticBlockSize + 4).ToArray();
+
+                    var tilesInBlock = staticBlockSize / staticTileSize;
+                    for (int tile = 0; tile < tilesInBlock; tile++)
                     {
-                        staticTileList.Add(StaticTiledata.Load(block * 32 + tile, staticTileBlock.Skip(tile * tileSize).Take(tileSize).ToArray()));
+                        staticTileList.Add(StaticTiledata.Load(block * tilesInBlock + tile, staticTileBlock.Skip(tile * staticTileSize).Take(staticTileSize).ToArray()));
                     }
                     progressTracking++;
-                    progressCallback?.DynamicInvoke(progressTracking, staticTiledata.Length / blockSize);
+                    progressCallback?.DynamicInvoke(progressTracking, staticTiledata.Length / staticBlockSize);
                 }
             }
             catch (Exception exception)
