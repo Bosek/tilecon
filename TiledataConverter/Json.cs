@@ -24,7 +24,10 @@ namespace TiledataConverter
                     jsonWriter.WriteComment(comment);
                     jsonWriter.WriteWhitespace(Environment.NewLine);
                 }
-                var serializer = new JsonSerializer();
+                var serializer = new JsonSerializer
+                {
+                    NullValueHandling = NullValueHandling.Ignore
+                };
                 serializer.Serialize(jsonWriter, value);
             }
         }

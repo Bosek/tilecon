@@ -37,6 +37,7 @@ namespace TiledataConverter.Tiledata
             {
                 var flags = Flags;
                 value.ToList().ForEach(flag => flags |= (Flags)Enum.Parse(typeof(Flags), flag, true));
+                Flags = flags;
             }
         }
         public byte Weight { get; set; }
@@ -56,7 +57,7 @@ namespace TiledataConverter.Tiledata
         {
             var data = new byte[37];
 
-            BitConverter.GetBytes((uint)obj.Flags).CopyTo(data, 0);
+            BitConverter.GetBytes((int)obj.Flags).CopyTo(data, 0);
             BitConverter.GetBytes(obj.Weight).CopyTo(data, 4);
             BitConverter.GetBytes(obj.Quality).CopyTo(data, 5);
             BitConverter.GetBytes(obj.MiscData).CopyTo(data, 6);
@@ -68,10 +69,10 @@ namespace TiledataConverter.Tiledata
             BitConverter.GetBytes(obj.StackOff).CopyTo(data, 14);
             BitConverter.GetBytes(obj.Value).CopyTo(data, 15);
             BitConverter.GetBytes(obj.Height).CopyTo(data, 16);
-            var trimmedTileName = obj.TileName.Trim();
+            var trimmedTileName = obj.TileName;
             if (trimmedTileName.Length > 20)
                 trimmedTileName.Substring(0, 20);
-            Encoding.ASCII.GetBytes(trimmedTileName).CopyTo(data, 17);
+            Encoding.Default.GetBytes(trimmedTileName).CopyTo(data, 17);
 
             return data;
         }
@@ -93,7 +94,7 @@ namespace TiledataConverter.Tiledata
                 StackOff = data.Skip(14).Take(1).ToArray()[0],
                 Value = data.Skip(15).Take(1).ToArray()[0],
                 Height = data.Skip(16).Take(1).ToArray()[0],
-                TileName = Encoding.ASCII.GetString(data, 17, 20).Replace('\u0000', ' ').Trim()
+                TileName = Encoding.Default.GetString(data, 17, 20).Replace('\u0000'.ToString(), "")
             };
         }
     }

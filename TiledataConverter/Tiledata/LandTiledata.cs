@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Collections.Generic;
 using System.Text;
 
 namespace TiledataConverter.Tiledata
@@ -38,6 +37,7 @@ namespace TiledataConverter.Tiledata
             {
                 var flags = Flags;
                 value.ToList().ForEach(flag => flags |= (Flags)Enum.Parse(typeof(Flags), flag, true));
+                Flags = flags;
             }
         }
 
@@ -49,12 +49,12 @@ namespace TiledataConverter.Tiledata
         {
             var data = new byte[26];
 
-            BitConverter.GetBytes((uint)obj.Flags).CopyTo(data, 0);
+            BitConverter.GetBytes((int)obj.Flags).CopyTo(data, 0);
             BitConverter.GetBytes(obj.TextureID).CopyTo(data, 4);
-            var trimmedTileName = obj.TileName.Trim();
+            var trimmedTileName = obj.TileName;
             if (trimmedTileName.Length > 20)
                 trimmedTileName.Substring(0, 20);
-            Encoding.ASCII.GetBytes(trimmedTileName).CopyTo(data, 6);
+            Encoding.Default.GetBytes(trimmedTileName).CopyTo(data, 6);
 
             return data;
         }
@@ -65,8 +65,9 @@ namespace TiledataConverter.Tiledata
                 ID = ID,
                 Flags = (Flags)BitConverter.ToInt32(data, 0),
                 TextureID = BitConverter.ToUInt16(data, 4),
-                TileName = Encoding.ASCII.GetString(data, 6, 20).Replace('\u0000', ' ').Trim()
+                TileName = Encoding.Default.GetString(data, 6, 20).Replace('\u0000'.ToString(), "")
             };
+            
         }
     }
 }

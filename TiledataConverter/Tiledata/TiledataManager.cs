@@ -27,12 +27,12 @@ namespace TiledataConverter.Tiledata
             data = File.ReadAllBytes(filename);
         }
 
-        public List<LandTiledata> LoadLandTiledata(Action<int, int> progressCallback = null)
+        public List<TileGroup> LoadLandTiledata(Action<int, int> progressCallback = null)
         {
             if (data == null)
                 throw new NullReferenceException("Data buffer is empty.");
-            
-            var landTileList = new List<LandTiledata>();
+
+            var groupTileList = new List<TileGroup>();
 
             try
             {
@@ -41,7 +41,10 @@ namespace TiledataConverter.Tiledata
                 var progressTracking = 0;
                 for (int block = 0; block < landBlockCount; block++)
                 {
+                    var landTileGroup = TileGroup.Load(block, landTiledata.Skip(block * landBlockSize).Take(4).ToArray());
                     var landTileBlock = landTiledata.Skip(block * landBlockSize + 4).ToArray();
+                    
+                    var landTileList = new List<LandTiledata>();
 
                     var tilesInBlock = landBlockSize / landTileSize;
                     for (int tile = 0; tile < tilesInBlock; tile++)
@@ -49,6 +52,10 @@ namespace TiledataConverter.Tiledata
                         var landTile = landTileBlock.Skip(tile * landTileSize).Take(landTileSize).ToArray();
                         landTileList.Add(LandTiledata.Load(block * tilesInBlock + tile, landTile));
                     }
+
+                    landTileGroup.LandTiles = GetDict(landTileList);
+                    groupTileList.Add(landTileGroup);
+
                     progressTracking++;
                     progressCallback?.DynamicInvoke(progressTracking, landTiledata.Length / landBlockSize);
                 }
@@ -57,16 +64,16 @@ namespace TiledataConverter.Tiledata
             {
                 throw new Exception("MUL file corrupted", exception);
             }
-            
-            return landTileList;
+
+            return groupTileList;
         }
 
-        public List<StaticTiledata> LoadStaticTiledata(Action<int, int> progressCallback = null)
+        public List<TileGroup> LoadStaticTiledata(Action<int, int> progressCallback = null)
         {
             if (data == null)
                 throw new NullReferenceException("Data buffer is empty.");
 
-            var staticTileList = new List<StaticTiledata>();
+            var groupTileList = new List<TileGroup>();
 
             try
             {
@@ -75,13 +82,19 @@ namespace TiledataConverter.Tiledata
                 var progressTracking = 0;
                 for (int block = 0; block < staticTiledata.Length / staticBlockSize; block++)
                 {
+                    var staticTileGroup = TileGroup.Load(block, staticTiledata.Skip(block * staticBlockSize).Take(4).ToArray());
                     var staticTileBlock = staticTiledata.Skip(block * staticBlockSize + 4).ToArray();
+                    
+                    var staticTileList = new List<StaticTiledata>();
 
                     var tilesInBlock = staticBlockSize / staticTileSize;
                     for (int tile = 0; tile < tilesInBlock; tile++)
                     {
                         staticTileList.Add(StaticTiledata.Load(block * tilesInBlock + tile, staticTileBlock.Skip(tile * staticTileSize).Take(staticTileSize).ToArray()));
                     }
+                    staticTileGroup.StaticTiles = GetDict(staticTileList);
+                    groupTileList.Add(staticTileGroup);
+
                     progressTracking++;
                     progressCallback?.DynamicInvoke(progressTracking, staticTiledata.Length / staticBlockSize);
                 }
@@ -91,16 +104,39 @@ namespace TiledataConverter.Tiledata
                 throw new Exception("MUL file corrupted", exception);
             }
 
-            return staticTileList;
+            return groupTileList;
         }
 
+        public static Dictionary<string, TileGroup> GetDict(List<TileGroup> landGroups)
+        {
+            var dict = new Dictionary<string, TileGroup>();
+            landGroups.ForEach(group => dict.Add(group.HexID, group));
+            return dict;
+        }
         public static Dictionary<string, LandTiledata> GetDict(List<LandTiledata> landTiles)
         {
             var dict = new Dictionary<string, LandTiledata>();
             landTiles.ForEach(tile => dict.Add(tile.HexID, tile));
             return dict;
         }
+        public static Dictionary<string, StaticTiledata> GetDict(List<StaticTiledata> staticTiles)
+        {
+            var dict = new Dictionary<string, StaticTiledata>();
+            staticTiles.ForEach(tile => dict.Add(tile.HexID, tile));
+            return dict;
+        }
 
+        public static List<TileGroup> GetList(Dictionary<string, TileGroup> dict)
+        {
+            var list = new List<TileGroup>();
+            dict.ToList().ForEach(kvPair =>
+            {
+                var tileGroup = kvPair.Value;
+                tileGroup.HexID = kvPair.Key;
+                list.Add(tileGroup);
+            });
+            return list;
+        }
         public static List<LandTiledata> GetList(Dictionary<string, LandTiledata> dict)
         {
             var list = new List<LandTiledata>();
@@ -112,14 +148,6 @@ namespace TiledataConverter.Tiledata
             });
             return list;
         }
-
-        public static Dictionary<string, StaticTiledata> GetDict(List<StaticTiledata> landTiles)
-        {
-            var dict = new Dictionary<string, StaticTiledata>();
-            landTiles.ForEach(tile => dict.Add(tile.HexID, tile));
-            return dict;
-        }
-
         public static List<StaticTiledata> GetList(Dictionary<string, StaticTiledata> dict)
         {
             var list = new List<StaticTiledata>();
@@ -132,35 +160,32 @@ namespace TiledataConverter.Tiledata
             return list;
         }
 
-        public static void SaveTileData(string filename, LandTiledata[] landTiles, StaticTiledata[] staticTiles)
+        public static void SaveTileData(string filename, Dictionary<string, TileGroup> landTileGroupsDict, Dictionary<string, TileGroup> staticTileGroupsDict)
         {
-            if (landTiles.Length != 512 * 32)
+            var landTileGroups = GetList(landTileGroupsDict);
+            var staticTileGroups = GetList(staticTileGroupsDict);
+            var landTiles = GetList(landTileGroups
+                .SelectMany(landTileGroup => landTileGroup.LandTiles)
+                .ToDictionary(kvPair => kvPair.Key, kvPair => kvPair.Value));
+            var staticTiles = GetList(staticTileGroups
+                .SelectMany(staticTileGroup => staticTileGroup.StaticTiles)
+                .ToDictionary(kvPair => kvPair.Key, kvPair => kvPair.Value));
+
+            if (landTiles.Count() != 512 * 32)
                 throw new ArgumentException("There must be exactly 512 * 32 land tiles.", nameof(landTiles));
-            if (staticTiles.Length % 32 != 0)
+            if (staticTiles.Count() % 32 != 0)
                 throw new ArgumentException("Number of static tiles must be divisible by 32.", nameof(staticTiles));
 
             var data = new List<byte>();
 
-            var landBlock = 0;
-            foreach (var landTile in landTiles.OrderBy(tile => tile.ID))
+            foreach (var landTileGroup in landTileGroups.OrderBy(group => group.ID))
             {
-                if (landBlock % 32 == 0)
-                    data.AddRange(new byte[4]);
-
-                data.AddRange(LandTiledata.GetBytes(landTile));
-
-                landBlock++;
+                data.AddRange(TileGroup.GetBytes(landTileGroup, true));
             }
-
-            var staticBlock = 0;
-            foreach (var staticTile in staticTiles.OrderBy(tile => tile.ID))
+            
+            foreach (var staticTileGroup in staticTileGroups.OrderBy(group => group.ID))
             {
-                if (staticBlock % 32 == 0)
-                    data.AddRange(new byte[4]);
-
-                data.AddRange(StaticTiledata.GetBytes(staticTile));
-
-                staticBlock++;
+                data.AddRange(TileGroup.GetBytes(staticTileGroup, true));
             }
 
             File.WriteAllBytes(filename, data.ToArray());
