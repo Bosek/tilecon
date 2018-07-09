@@ -13,10 +13,11 @@ namespace TiledataConverter
         {
             Console.WriteLine("https://github.com/Bosek/tilecon");
             Console.WriteLine();
-            Console.WriteLine("USAGE: tilecon <VERB>");
+            Console.WriteLine("USAGE: tilecon <VERB> <FILENAME>");
             Console.WriteLine("VERBS:");
-            Console.WriteLine("json, tojson\tconverts MUL file to JSON");
-            Console.WriteLine("mul, tomul\tconverts JSON files to MUL");
+            Console.WriteLine("\tjson, tojson\tconverts MUL file to JSON, <FILENAME> is input here");
+            Console.WriteLine("\tmul, tomul\tconverts JSON files to MUL, <FILENAME> is output here");
+            Console.WriteLine("FILENAME defaults to tiledata.mul");
         }
         static void Main(string[] args)
         {
@@ -27,19 +28,23 @@ namespace TiledataConverter
             }
 
             args = args.Select(arg => arg.ToLower()).ToArray();
+            var tiledataFilename = "tiledata.mul";
+            if (args.Length == 2)
+                tiledataFilename = args[1];
+
             switch (args[0])
             {
                 case "json":
                 case "tojson":
                     {
-                        if (!File.Exists("tiledata.mul"))
+                        if (!File.Exists(tiledataFilename))
                         {
-                            Console.WriteLine("tiledata.mul not found");
+                            Console.WriteLine($"{tiledataFilename} not found");
                             break;
                         }
 
-                        var tiledataManager = new TiledataManager("tiledata.mul");
-                        Console.WriteLine("Loading tiledata.mul");
+                        var tiledataManager = new TiledataManager(tiledataFilename);
+                        Console.WriteLine($"Loading {tiledataFilename}");
                         var landGroups = tiledataManager.LoadLandTiledata((progress, maximum) =>
                         {
                             Console.Write($"\rLoading land tiledata {Math.Floor(((float)progress / maximum) * 100)}%");
@@ -82,8 +87,8 @@ namespace TiledataConverter
                         var staticTiledataGroupsDict = (Dictionary<string, TileGroup>)JsonConvert.DeserializeObject(
                             File.ReadAllText("staticTiledata.json"), typeof(Dictionary<string, TileGroup>));
 
-                        Console.WriteLine("Creating tiledata.mul");
-                        TiledataManager.SaveTileData("tiledata.mul", landTiledataGroupsDict, staticTiledataGroupsDict);
+                        Console.WriteLine($"Creating {tiledataFilename}");
+                        TiledataManager.SaveTileData(tiledataFilename, landTiledataGroupsDict, staticTiledataGroupsDict);
                         break;
                     }
                 default:
