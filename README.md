@@ -6,6 +6,40 @@ Ultima Online tiledata converter to JSON and back.
 `tilecon json` or `tilecon tojson` converts *tiledata.mul* to *landTiledata.json* and *staticTiledata.json*  
 `tilecon mul` or `tilecon tomul` converts *landTiledata.json* and *staticTiledata.json* to *tiledata.mul*
 
+# List of flags
+        Background
+        Weapon
+        Transparent
+        Translucent
+        Wall
+        Damaging
+        Impassable
+        Wet
+        Unknown1
+        Surface
+        Bridge
+        Generic
+        Window
+        NoShoot
+        ArticleA
+        ArticleAn
+        Internal
+        Foliage
+        PartialHue
+        Unknown2
+        Map
+        Container
+        Wearable
+        LightSource
+        Animation
+        NoDiagonal
+        Unknown3
+        Armor
+        Roof
+        Door
+        StairBack
+        StairRight
+
 # Licence
 
 MIT License
