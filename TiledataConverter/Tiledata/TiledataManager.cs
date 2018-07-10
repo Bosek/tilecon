@@ -36,20 +36,22 @@ namespace TiledataConverter.Tiledata
 
             try
             {
-                var landTiledata = data.Take(landBlockCount * landBlockSize).ToArray();
+                var landTiledata = data.GetSubArray(0, landBlockCount * landBlockSize);
 
                 var progressTracking = 0;
+                var progressFull = (landTiledata.Length / landBlockSize);
+                var progressFraction = progressFull / 100;
                 for (int block = 0; block < landBlockCount; block++)
                 {
-                    var landTileGroup = TileGroup.Load(block, landTiledata.Skip(block * landBlockSize).Take(4).ToArray());
-                    var landTileBlock = landTiledata.Skip(block * landBlockSize + 4).ToArray();
-                    
+                    var landTileGroup = TileGroup.Load(block, landTiledata.GetSubArray(block * landBlockSize, 4));
+                    var landTileBlock = landTiledata.GetSubArray(block * landBlockSize + 4, landBlockSize - 4);
+
                     var landTileList = new List<LandTiledata>();
 
                     var tilesInBlock = landBlockSize / landTileSize;
                     for (int tile = 0; tile < tilesInBlock; tile++)
                     {
-                        var landTile = landTileBlock.Skip(tile * landTileSize).Take(landTileSize).ToArray();
+                        var landTile = landTileBlock.GetSubArray(tile * landTileSize, landTileSize);
                         landTileList.Add(LandTiledata.Load(block * tilesInBlock + tile, landTile));
                     }
 
@@ -57,8 +59,10 @@ namespace TiledataConverter.Tiledata
                     groupTileList.Add(landTileGroup);
 
                     progressTracking++;
-                    progressCallback?.DynamicInvoke(progressTracking, landTiledata.Length / landBlockSize);
+                    if (progressTracking % progressFraction == 0)
+                        progressCallback?.DynamicInvoke(progressTracking, progressFull);
                 }
+                progressCallback?.DynamicInvoke(progressFull, progressFull);
             }
             catch (Exception exception)
             {
@@ -77,27 +81,32 @@ namespace TiledataConverter.Tiledata
 
             try
             {
-                var staticTiledata = data.Skip(landBlockCount * landBlockSize).ToArray();
+                var staticTiledata = data.GetSubArray(landBlockCount * landBlockSize, data.Length - (landBlockCount * landBlockSize));
 
                 var progressTracking = 0;
+                var progressFull = (staticTiledata.Length / staticBlockSize);
+                var progressFraction = progressFull / 100;
                 for (int block = 0; block < staticTiledata.Length / staticBlockSize; block++)
                 {
-                    var staticTileGroup = TileGroup.Load(block, staticTiledata.Skip(block * staticBlockSize).Take(4).ToArray());
-                    var staticTileBlock = staticTiledata.Skip(block * staticBlockSize + 4).ToArray();
-                    
+                    var staticTileGroup = TileGroup.Load(block, staticTiledata.GetSubArray(block * staticBlockSize, 4));
+                    var staticTileBlock = staticTiledata.GetSubArray(block * staticBlockSize + 4, staticBlockSize - 4);
+
                     var staticTileList = new List<StaticTiledata>();
 
                     var tilesInBlock = staticBlockSize / staticTileSize;
                     for (int tile = 0; tile < tilesInBlock; tile++)
                     {
-                        staticTileList.Add(StaticTiledata.Load(block * tilesInBlock + tile, staticTileBlock.Skip(tile * staticTileSize).Take(staticTileSize).ToArray()));
+                        var staticTile = staticTileBlock.GetSubArray(tile * staticTileSize, staticTileSize);
+                        staticTileList.Add(StaticTiledata.Load(block * tilesInBlock + tile, staticTile));
                     }
                     staticTileGroup.StaticTiles = GetDict(staticTileList);
                     groupTileList.Add(staticTileGroup);
 
                     progressTracking++;
-                    progressCallback?.DynamicInvoke(progressTracking, staticTiledata.Length / staticBlockSize);
+                    if (progressTracking % progressFraction == 0)
+                        progressCallback?.DynamicInvoke(progressTracking, staticTiledata.Length / staticBlockSize);
                 }
+                progressCallback?.DynamicInvoke(progressFull, progressFull);
             }
             catch (Exception exception)
             {

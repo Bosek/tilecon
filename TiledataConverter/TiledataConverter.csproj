@@ -63,6 +63,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AnimData\AnimData.cs" />
+    <Compile Include="ExtensionMethods.cs" />
     <Compile Include="Json.cs" />
     <Compile Include="Tiledata\Flags.cs" />
     <Compile Include="Tiledata\LandTiledata.cs" />
