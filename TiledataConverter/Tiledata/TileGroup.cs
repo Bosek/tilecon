@@ -53,7 +53,6 @@ namespace TiledataConverter.Tiledata
             }
             return data;
         }
-
         public static TileGroup Load(int ID, byte[] data)
         {
             return new TileGroup

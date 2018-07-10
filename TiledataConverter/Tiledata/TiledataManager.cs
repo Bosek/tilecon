@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace TiledataConverter.Tiledata
 {
-    class TiledataManager
+    class Tiledata
     {
         int landBlockCount = 512;
         int landBlockSize = 836;
@@ -16,7 +16,7 @@ namespace TiledataConverter.Tiledata
 
         byte[] data;
 
-        public TiledataManager(string filename = null)
+        public Tiledata(string filename = null)
         {
             if (filename != null)
                 LoadMul(filename);
@@ -25,95 +25,6 @@ namespace TiledataConverter.Tiledata
         public void LoadMul(string filename)
         {
             data = File.ReadAllBytes(filename);
-        }
-
-        public List<TileGroup> LoadLandTiledata(Action<int, int> progressCallback = null)
-        {
-            if (data == null)
-                throw new NullReferenceException("Data buffer is empty.");
-
-            var groupTileList = new List<TileGroup>();
-
-            try
-            {
-                var landTiledata = data.GetSubArray(0, landBlockCount * landBlockSize);
-
-                var progressTracking = 0;
-                var progressFull = (landTiledata.Length / landBlockSize);
-                var progressFraction = progressFull / 100;
-                for (int block = 0; block < landBlockCount; block++)
-                {
-                    var landTileGroup = TileGroup.Load(block, landTiledata.GetSubArray(block * landBlockSize, 4));
-                    var landTileBlock = landTiledata.GetSubArray(block * landBlockSize + 4, landBlockSize - 4);
-
-                    var landTileList = new List<LandTiledata>();
-
-                    var tilesInBlock = landBlockSize / landTileSize;
-                    for (int tile = 0; tile < tilesInBlock; tile++)
-                    {
-                        var landTile = landTileBlock.GetSubArray(tile * landTileSize, landTileSize);
-                        landTileList.Add(LandTiledata.Load(block * tilesInBlock + tile, landTile));
-                    }
-
-                    landTileGroup.LandTiles = GetDict(landTileList);
-                    groupTileList.Add(landTileGroup);
-
-                    progressTracking++;
-                    if (progressTracking % progressFraction == 0)
-                        progressCallback?.DynamicInvoke(progressTracking, progressFull);
-                }
-                progressCallback?.DynamicInvoke(progressFull, progressFull);
-            }
-            catch (Exception exception)
-            {
-                throw new Exception("MUL file corrupted", exception);
-            }
-
-            return groupTileList;
-        }
-
-        public List<TileGroup> LoadStaticTiledata(Action<int, int> progressCallback = null)
-        {
-            if (data == null)
-                throw new NullReferenceException("Data buffer is empty.");
-
-            var groupTileList = new List<TileGroup>();
-
-            try
-            {
-                var staticTiledata = data.GetSubArray(landBlockCount * landBlockSize, data.Length - (landBlockCount * landBlockSize));
-
-                var progressTracking = 0;
-                var progressFull = (staticTiledata.Length / staticBlockSize);
-                var progressFraction = progressFull / 100;
-                for (int block = 0; block < staticTiledata.Length / staticBlockSize; block++)
-                {
-                    var staticTileGroup = TileGroup.Load(block, staticTiledata.GetSubArray(block * staticBlockSize, 4));
-                    var staticTileBlock = staticTiledata.GetSubArray(block * staticBlockSize + 4, staticBlockSize - 4);
-
-                    var staticTileList = new List<StaticTiledata>();
-
-                    var tilesInBlock = staticBlockSize / staticTileSize;
-                    for (int tile = 0; tile < tilesInBlock; tile++)
-                    {
-                        var staticTile = staticTileBlock.GetSubArray(tile * staticTileSize, staticTileSize);
-                        staticTileList.Add(StaticTiledata.Load(block * tilesInBlock + tile, staticTile));
-                    }
-                    staticTileGroup.StaticTiles = GetDict(staticTileList);
-                    groupTileList.Add(staticTileGroup);
-
-                    progressTracking++;
-                    if (progressTracking % progressFraction == 0)
-                        progressCallback?.DynamicInvoke(progressTracking, staticTiledata.Length / staticBlockSize);
-                }
-                progressCallback?.DynamicInvoke(progressFull, progressFull);
-            }
-            catch (Exception exception)
-            {
-                throw new Exception("MUL file corrupted", exception);
-            }
-
-            return groupTileList;
         }
 
         public static Dictionary<string, TileGroup> GetDict(List<TileGroup> landGroups)
@@ -169,7 +80,7 @@ namespace TiledataConverter.Tiledata
             return list;
         }
 
-        public static void SaveTileData(string filename, Dictionary<string, TileGroup> landTileGroupsDict, Dictionary<string, TileGroup> staticTileGroupsDict)
+        public static void Save(string filename, Dictionary<string, TileGroup> landTileGroupsDict, Dictionary<string, TileGroup> staticTileGroupsDict)
         {
             var landTileGroups = GetList(landTileGroupsDict);
             var staticTileGroups = GetList(staticTileGroupsDict);
@@ -189,15 +100,97 @@ namespace TiledataConverter.Tiledata
 
             foreach (var landTileGroup in landTileGroups.OrderBy(group => group.ID))
             {
+                if (landTileGroup.LandTiles.Count != 32)
+                    throw new ArgumentException($"There are not 32 items{landTileGroup.LandTiles.Count} in land tile group {landTileGroup.HexID}");
                 data.AddRange(TileGroup.GetBytes(landTileGroup, true));
             }
             
             foreach (var staticTileGroup in staticTileGroups.OrderBy(group => group.ID))
             {
+                if (staticTileGroup.StaticTiles.Count != 32)
+                    throw new ArgumentException($"There are not 32 items{staticTileGroup.StaticTiles.Count} in static tile group {staticTileGroup.HexID}");
                 data.AddRange(TileGroup.GetBytes(staticTileGroup, true));
             }
 
             File.WriteAllBytes(filename, data.ToArray());
+        }
+
+        public List<TileGroup> Load<T>(Action<int, int> progressCallback = null)
+        {
+            if (data == null)
+                throw new NullReferenceException("Data buffer is empty.");
+
+            var tileType = typeof(T);
+
+            var blockSize = 0;
+            var startPosition = 0;
+            var tiledataSize = 0;
+            var tileSize = 0;
+
+            if (tileType == typeof(LandTiledata))
+            {
+                blockSize = landBlockSize;
+                tileSize = landTileSize;
+                tiledataSize = landBlockCount * landBlockSize;
+            }
+            else if (tileType == typeof(StaticTiledata))
+            {
+                blockSize = staticBlockSize;
+                startPosition = landBlockCount * landBlockSize;
+                tileSize = staticTileSize;
+                tiledataSize = data.Length - (landBlockCount * landBlockSize);
+            }
+            else
+            {
+                throw new ArgumentException($"Only {nameof(LandTiledata)} or {nameof(StaticTiledata)} is acceptable.");
+            }
+
+            var groupTileList = new List<TileGroup>();
+
+            try
+            {
+                var tiledata = data.GetSubArray(startPosition, tiledataSize);
+
+                var progressTracking = 0;
+                var progressFull = (tiledata.Length / blockSize);
+                var progressFraction = progressFull / 100;
+                for (int block = 0; block < tiledata.Length / blockSize; block++)
+                {
+                    var tileGroup = TileGroup.Load(block, tiledata.GetSubArray(block * blockSize, 4));
+                    var tileBlock = tiledata.GetSubArray(block * blockSize + 4, blockSize - 4);
+
+                    var tileList = new List<T>();
+                    var landTileList = new List<LandTiledata>();
+                    var staticTileList = new List<StaticTiledata>();
+
+                    for (int tileIndex = 0; tileIndex < 32; tileIndex++)
+                    {
+                        var tile = tileBlock.GetSubArray(tileIndex * tileSize, tileSize);
+                        var loadedTile = typeof(T).GetMethod("Load").Invoke(null, new object[] { block * 32 + tileIndex, tile });
+                        if (tileType == typeof(LandTiledata))
+                            landTileList.Add((LandTiledata)loadedTile);
+                        else if (tileType == typeof(StaticTiledata))
+                            staticTileList.Add((StaticTiledata)loadedTile);
+                    }
+
+                    if (tileType == typeof(LandTiledata))
+                        tileGroup.LandTiles = GetDict(landTileList);
+                    else if (tileType == typeof(StaticTiledata))
+                        tileGroup.StaticTiles = GetDict(staticTileList);
+                    groupTileList.Add(tileGroup);
+
+                    progressTracking++;
+                    if (progressTracking % progressFraction == 0)
+                        progressCallback?.DynamicInvoke(progressTracking, progressFull);
+                }
+                progressCallback?.DynamicInvoke(progressFull, progressFull);
+            }
+            catch (Exception exception)
+            {
+                throw new Exception("MUL file corrupted", exception);
+            }
+
+            return groupTileList;
         }
     }
 }

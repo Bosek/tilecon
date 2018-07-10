@@ -43,15 +43,15 @@ namespace TiledataConverter
                             break;
                         }
 
-                        var tiledataManager = new TiledataManager(tiledataFilename);
+                        var tiledataManager = new Tiledata.Tiledata(tiledataFilename);
                         Console.WriteLine($"Loading {tiledataFilename}");
-                        var landGroups = tiledataManager.LoadLandTiledata((progress, maximum) =>
+                        var landGroups = tiledataManager.Load<LandTiledata>((progress, maximum) =>
                         {
                             Console.Write($"\rLoading land tiledata {Math.Floor(((float)progress / maximum) * 100)}%");
                             if (progress == maximum)
                                 Console.Write("\n");
                         });
-                        var staticTiledata = tiledataManager.LoadStaticTiledata((progress, maximum) =>
+                        var staticTiledata = tiledataManager.Load<StaticTiledata>((progress, maximum) =>
                         {
                             Console.Write($"\rLoading static tiledata {Math.Floor(((float)progress / maximum) * 100)}%");
                             if (progress == maximum)
@@ -59,10 +59,10 @@ namespace TiledataConverter
                         });
 
                         Console.WriteLine("Creating landTiledata.json");
-                        Json.SerializeToFile("landTiledata.json", TiledataManager.GetDict(landGroups));
+                        Json.SerializeToFile("landTiledata.json", Tiledata.Tiledata.GetDict(landGroups));
 
                         Console.WriteLine("Creating staticTiledata.json");
-                        Json.SerializeToFile("staticTileData.json", TiledataManager.GetDict(staticTiledata));
+                        Json.SerializeToFile("staticTileData.json", Tiledata.Tiledata.GetDict(staticTiledata));
                         break;
                     }
                 case "mul":
@@ -88,7 +88,7 @@ namespace TiledataConverter
                             File.ReadAllText("staticTiledata.json"), typeof(Dictionary<string, TileGroup>));
 
                         Console.WriteLine($"Creating {tiledataFilename}");
-                        TiledataManager.SaveTileData(tiledataFilename, landTiledataGroupsDict, staticTiledataGroupsDict);
+                        Tiledata.Tiledata.Save(tiledataFilename, landTiledataGroupsDict, staticTiledataGroupsDict);
                         break;
                     }
                 default:
